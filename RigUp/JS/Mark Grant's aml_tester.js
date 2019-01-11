@@ -11,6 +11,8 @@ var testStrings = [
    // Other test strings here
    ["Testing, ^#unknown tag^!#",
   "Testing, <unknownAMLTag1>unknown tag</unknownAMLTag1>"],
+  ["Testing ^* multiple ^@ tags both opening ^!* and closing with ^!* additional  spaces.", 
+  "Testing <unknownAMLTag1> multiple <unknownAMLTag3> tags both opening </unknownAMLTag3><</unknownAMLTag2> <unknownAMLTag3> and closing with </unknownAMLTag3> additonal  spaces."]
 ];
 
 testStrings.forEach(function (testString, idx) {
