@@ -1,5 +1,5 @@
 var translateModule = process.argv[2],
-	AMLTranslator = require('./amlTranslator');
+	AMLTranslator = require('./Mark\ Grant\'s\ amlTranslator');
 
 var testStrings = [
 	 ["Hello, World!",

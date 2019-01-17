@@ -30,7 +30,7 @@ var AMLTranslator = {
 		
 		HTMLTranslatedAMLString = amlTagArray.join('');
 
-		console.log('AML Tag Legened:', amlTags);
+		console.log('AML Tag Legened: \n', amlTags);
 
 		return HTMLTranslatedAMLString;
 	}
