@@ -1,0 +1,11 @@
+ffmpeg -y \
+ -i tos-teaser.mp4 \
+ -codec copy \
+ -bsf h264_mp4toannexb \
+ -map 0 \
+ -f segment \
+ -segment_time 10 \
+ -segment_format mpegts \
+ -segment_list "./test/prog_index.m3u8" \
+ -segment_list_type m3u8 \
+ "./test/fileSequence%d.ts"
