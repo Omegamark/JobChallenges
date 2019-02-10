@@ -13,28 +13,40 @@ import (
 
 func main() {
 	// Get a count of ts files in directory
-	// numFiles, err := fileCount("./test_360")
-	// if err != nil {
-	// 	log.Fatal(err)
-	// }
-	// fmt.Println(numFiles)
-
-	// Make a while loop using numFiles to aggregate all of the bitrates
-
-	cmd := exec.Command("ffprobe", "./test_360/output_000.ts")
-
-	var output, errb bytes.Buffer
-
-	cmd.Stdout = &output
-	cmd.Stderr = &errb // Not sure why output is being put here...
-	err := cmd.Run()
+	numFiles, err := fileCount("./test_360")
 	if err != nil {
 		log.Fatal(err)
 	}
-	// Redundant, but I do not fully understand why the Stderr is receiving the desired output.
-	info := errb.String()
-
+	fmt.Println(numFiles)
 	var bitrates []int
+	// Check that numFiles is less than 10, otherwise, NOT MVP
+	if numFiles < 10 {
+		fmt.Println("sanity check 1")
+		// Make a while loop using numFiles to aggregate all of the bitrates
+		i := 0
+		for i < numFiles {
+			// fmt.Println(i)
+			// fmt.Println("sanity check 2")
+			cmd := exec.Command("ffprobe", "./test_360/output_00"+strconv.Itoa(i)+".ts")
+
+			var output, errb bytes.Buffer
+
+			cmd.Stdout = &output
+			cmd.Stderr = &errb // Not sure why output is being put here...
+			err = cmd.Run()
+			if err != nil {
+				log.Fatal(err)
+			}
+			// Redundant, but I do not fully understand why the Stderr is receiving the desired output.
+			info := errb.String()
+			bitrates = findBitRate(info, bitrates)
+			i++
+		}
+	}
+	fmt.Println(bitrates)
+}
+
+func findBitRate(info string, bitrates []int) []int {
 	fields := strings.Fields(info)
 	for i, v := range fields {
 		if v == "bitrate:" {
@@ -50,11 +62,7 @@ func main() {
 
 		}
 	}
-
-}
-
-func findBitRate() {
-
+	return bitrates
 }
 
 func fileCount(path string) (int, error) {
