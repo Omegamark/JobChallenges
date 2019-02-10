@@ -20,15 +20,15 @@ func main() {
 	// *** Make the directories.
 	os.Mkdir("test_1080", 0700)
 	os.Mkdir("test_720", 0700)
-	os.Mkdir("test_480", 0700)
+	os.Mkdir("test_540", 0700)
+	os.Mkdir("test_432", 0700)
 	os.Mkdir("test_360", 0700)
-	os.Mkdir("test_240", 0700)
 
 	command := "ffmpeg -i " + fileName + ` -s 1920x1080 -c:a aac -strict -2 -b:a 128k -c:v libx264 -g 72 -keyint_min 72 -b:v 6000k -hls_time 6 -hls_segment_filename ./test_1080/output_%03d.ts ./test_1080/output.m3u8
 	 -s 1280x720 -c:a aac -strict -2 -b:a 128k -c:v libx264 -g 72 -keyint_min 72 -b:v 4000k -hls_time 6 -hls_segment_filename ./test_720/output_%03d.ts ./test_720/output.m3u8
-	 -s 854x480 -c:a aac -strict -2 -b:a 128k -c:v libx264 -g 72 -keyint_min 72 -b:v 2000k -hls_time 6 -hls_segment_filename ./test_480/output_%03d.ts ./test_480/output.m3u8
-	 -s 640x360 -c:a aac -strict -2 -b:a 128k -c:v libx264 -g 72 -keyint_min 72 -b:v 1500k -hls_time 6 -hls_segment_filename ./test_360/output_%03d.ts ./test_360/output.m3u8
-	 -s 426x240 -c:a aac -strict -2 -b:a 128k -c:v libx264 -g 72 -keyint_min 72 -b:v 1100k -hls_time 6 -hls_segment_filename ./test_240/output_%03d.ts ./test_240/output.m3u8
+	 -s 960x540 -c:a aac -strict -2 -b:a 128k -c:v libx264 -g 72 -keyint_min 72 -b:v 2000k -hls_time 6 -hls_segment_filename ./test_540/output_%03d.ts ./test_540/output.m3u8
+	 -s 768x432 -c:a aac -strict -2 -b:a 128k -c:v libx264 -g 72 -keyint_min 72 -b:v 1500k -hls_time 6 -hls_segment_filename ./test_432/output_%03d.ts ./test_432/output.m3u8
+	 -s 640x360 -c:a aac -strict -2 -b:a 128k -c:v libx264 -g 72 -keyint_min 72 -b:v 1100k -hls_time 6 -hls_segment_filename ./test_360/output_%03d.ts ./test_360/output.m3u8
 	 `
 
 	parts := strings.Fields(command)
@@ -39,6 +39,8 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	// **** COMMAND TO GET FILE METADATA WILL LOOK SOMETHING LIKE THIS, THE AVERAGE-BANDWIDTH WILL HAVE TO BE CALCULATED IN A *FOR LOOP* FRAME-RATE IS A SIMPLE PROPERTY, IT WILL = 24
+	// *********** exec.Command("ffprobe <filename>").Output()
 	// fmt.Printf("%s\n", stdoutStderr)
 }
 
