@@ -8,6 +8,7 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
@@ -24,6 +25,8 @@ func main() {
 	}
 	fmt.Println(numFiles)
 	var bitrates []int
+	var frameRate int
+	var avgBandwidth int
 	// Check that numFiles is less than 10, otherwise, NOT MVP
 	if numFiles < 10 {
 		fmt.Println("sanity check 1")
@@ -45,62 +48,72 @@ func main() {
 				log.Fatal(err)
 			}
 			// Redundant, but I do not fully understand why the Stderr is receiving the desired output.
-			info := errb.String()
-			bitrates = findBitRate(info, bitrates)
+			fileMeta := errb.String()
+			bitrates = findBitRate(fileMeta, bitrates)
+			// Checks every time, change so it only does a single check.
+			frameRate = findFrameRate(fileMeta)
 			i++
 		}
 		// Bad naming here, will fix with refactor later. Meant to provide the AVERAGE-BANDWIDTH parameter to main.m3u8 manifest
-		avgBandwidth := averageBitrate(numFiles, bitrates)
+		avgBandwidth = averageBitrate(numFiles, bitrates)
 		fmt.Println(avgBandwidth)
+		fmt.Println(bitrates)
+		writeManifest(frameRate, avgBandwidth)
 	} else {
-		log.Fatalln("Not MVP this time")
+		log.Fatalln("Not MVP at this time")
 	}
-	fmt.Println(bitrates)
-	writeManifest()
+	getDirectories()
 }
 
-// func writeManifest(frameRate int, avgBandwidth int) {
-func writeManifest() {
-	os.Mkdir("./tmp", 0700)
-	// #EXTM3U
-	// #EXT-X-STREAM-INF:BANDWIDTH=600000,AVERAGE-BANDWITH=5281000,RESOLUTION=1920x1080,CODECS="H.264"
-	// ./test_1080/output.m3u8
-	// To start, here's how to dump a string (or just
-	// bytes) into a file.
-	d1 := []byte("hello\ngo\n")
-	err := ioutil.WriteFile("./tmp/dat1", d1, 0644)
+func getDirectories() {
+	err := filepath.Walk("./", func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			fmt.Printf("prevent panic by handling failure accessing a path %q: %v\n", path, err)
+			return err
+		}
+
+		if info.IsDir() == true {
+			movieDir, err := regexp.MatchString("test*", path)
+			if err != nil {
+				log.Fatal(err)
+			}
+			if movieDir == true {
+				fmt.Printf("visited file or dir: %q\n", path)
+			}
+		}
+		return nil
+	})
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
+
+}
+
+func writeManifest(frameRate int, avgBandwidth int) {
+	fmt.Println("jdskl;fjas;", frameRate, avgBandwidth)
 	// For more granular writes, open a file for writing.
-	f, err := os.Create("./tmp/dat2")
+	f, err := os.Create("./main.m3u8")
 	if err != nil {
 		panic(err)
 	}
 	// It's idiomatic to defer a `Close` immediately
 	// after opening a file.
 	defer f.Close()
-
-	// You can `Write` byte slices as you'd expect.
-	d2 := []byte{115, 111, 109, 101, 10}
-	n2, err := f.Write(d2)
+	// To start, here's how to dump a string (or just
+	// bytes) into a file.
+	manifest := []byte(
+		`#EXTM3U
+#EXT-X-STREAM-INF:BANDWIDTH=600000,AVERAGE-BANDWITH=` + strconv.Itoa(avgBandwidth) + `,FRAME-RATE=` + strconv.Itoa(frameRate) + `,RESOLUTION=1920x1080,CODECS="H.264"
+./test_1080/output.m3u8
+`)
+	err = ioutil.WriteFile("./main.m3u8", manifest, 0644)
 	if err != nil {
 		panic(err)
 	}
-	fmt.Printf("wrote %d bytes\n", n2)
-
-	// A `WriteString` is also available.
-	n3, err := f.WriteString("writes\n")
-	fmt.Printf("wrote %d bytes\n", n3)
-
-	// Issue a `Sync` to flush writes to stable storage.
-	f.Sync()
 
 	// `bufio` provides buffered writers in addition
 	// to the buffered readers we saw earlier.
 	w := bufio.NewWriter(f)
-	n4, err := w.WriteString("buffered\n")
-	fmt.Printf("wrote %d bytes\n", n4)
 
 	// Use `Flush` to ensure all buffered operations have
 	// been applied to the underlying writer.
@@ -116,8 +129,8 @@ func averageBitrate(numFiles int, bitrates []int) int {
 	return bitrateSum / numFiles
 }
 
-func findBitRate(info string, bitrates []int) []int {
-	fields := strings.Fields(info)
+func findBitRate(fileMeta string, bitrates []int) []int {
+	fields := strings.Fields(fileMeta)
 	for i, v := range fields {
 		if v == "bitrate:" {
 			fmt.Println(fields[i+1])
@@ -132,7 +145,28 @@ func findBitRate(info string, bitrates []int) []int {
 
 		}
 	}
+	fmt.Println()
 	return bitrates
+}
+
+func findFrameRate(fileMeta string) int {
+	fields := strings.Fields(fileMeta)
+	// fmt.Println(fields)
+	for i, v := range fields {
+		// I don't like this check either, but will fix when refactor.
+		if v == "fps," {
+			fmt.Println(fields[i-1])
+			frameRateSafeString := strings.Trim(fields[i+1], "")
+			frameRate, err := strconv.Atoi(frameRateSafeString)
+			if err != nil {
+				log.Fatalln(err)
+			}
+			// fmt.Println("I'M A FUCKING frameRate:", frameRate)
+			return frameRate
+		}
+	}
+	fmt.Println("We didn't find fps")
+	return 0
 }
 
 func fileCount(path string) (int, error) {
