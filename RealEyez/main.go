@@ -9,65 +9,57 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"reflect"
 	"regexp"
 	"strconv"
 	"strings"
 )
 
 func main() {
-	fmt.Println("sanity check")
+	if len(os.Args) < 2 {
+		log.Fatalln("Please enter a file name...")
+	}
+	fileName := os.Args[1]
 
-	// Use this as a CLI argument to the program.
-	// fileName := "tos-teaser.mp4"
-	// // Make the directories.
-	// os.Mkdir("test_1080", 0700)
-	// os.Mkdir("test_720", 0700)
-	// os.Mkdir("test_540", 0700)
-	// os.Mkdir("test_432", 0700)
-	// os.Mkdir("test_360", 0700)
+	// Make the directories for separate movie files.
+	os.Mkdir(fileName+"_1080", 0700)
+	os.Mkdir(fileName+"_720", 0700)
+	os.Mkdir(fileName+"_540", 0700)
+	os.Mkdir(fileName+"_432", 0700)
+	os.Mkdir(fileName+"_360", 0700)
 
-	// command := "ffmpeg -i " + fileName + ` -s 1920x1080 -c:a aac -strict -2 -b:a 128k -c:v libx264 -g 72 -keyint_min 72 -b:v 6000k -hls_time 6 -hls_segment_filename ./test_1080/output_%03d.ts ./test_1080/output.m3u8
-	//  -s 1280x720 -c:a aac -strict -2 -b:a 128k -c:v libx264 -g 72 -keyint_min 72 -b:v 4000k -hls_time 6 -hls_segment_filename ./test_720/output_%03d.ts ./test_720/output.m3u8
-	//  -s 960x540 -c:a aac -strict -2 -b:a 128k -c:v libx264 -g 72 -keyint_min 72 -b:v 2000k -hls_time 6 -hls_segment_filename ./test_540/output_%03d.ts ./test_540/output.m3u8
-	//  -s 768x432 -c:a aac -strict -2 -b:a 128k -c:v libx264 -g 72 -keyint_min 72 -b:v 1500k -hls_time 6 -hls_segment_filename ./test_432/output_%03d.ts ./test_432/output.m3u8
-	//  -s 640x360 -c:a aac -strict -2 -b:a 128k -c:v libx264 -g 72 -keyint_min 72 -b:v 1100k -hls_time 6 -hls_segment_filename ./test_360/output_%03d.ts ./test_360/output.m3u8
-	//  `
+	command := "ffmpeg -i " + fileName + ` -s 1920x1080 -c:a aac -strict -2 -b:a 128k -c:v libx264 -g 72 -keyint_min 72 -b:v 6000k -hls_time 6 -hls_segment_filename ./` + fileName + `_1080/output_%03d.ts ./` + fileName + `_1080/output.m3u8
+	 -s 1280x720 -c:a aac -strict -2 -b:a 128k -c:v libx264 -g 72 -keyint_min 72 -b:v 4000k -hls_time 6 -hls_segment_filename ./` + fileName + `_720/output_%03d.ts ./` + fileName + `_720/output.m3u8
+	 -s 960x540 -c:a aac -strict -2 -b:a 128k -c:v libx264 -g 72 -keyint_min 72 -b:v 2000k -hls_time 6 -hls_segment_filename ./` + fileName + `_540/output_%03d.ts ./` + fileName + `_540/output.m3u8
+	 -s 768x432 -c:a aac -strict -2 -b:a 128k -c:v libx264 -g 72 -keyint_min 72 -b:v 1500k -hls_time 6 -hls_segment_filename ./` + fileName + `_432/output_%03d.ts ./` + fileName + `_432/output.m3u8
+	 -s 640x360 -c:a aac -strict -2 -b:a 128k -c:v libx264 -g 72 -keyint_min 72 -b:v 1100k -hls_time 6 -hls_segment_filename ./` + fileName + `_360/output_%03d.ts ./` + fileName + `_360/output.m3u8
+	 `
 
-	// parts := strings.Fields(command)
-	// cmd := exec.Command(parts[0], parts[1:]...)
-	// cmd.Stderr = os.Stderr
-	// cmd.Stdout = os.Stdout
-	// err := cmd.Run()
-	// if err != nil {
-	// 	log.Fatal(err)
-	// }
+	parts := strings.Fields(command)
 
-	// Could put createmanifest into walk, but may be confusing.
-	// getDirectories()
-	// Pass dirName to this shit
-	CreateManifest()
+	cmd := exec.Command(parts[0], parts[1:]...)
+	cmd.Stderr = os.Stderr
+	cmd.Stdout = os.Stdout
+
+	err := cmd.Run()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	createManifest(fileName)
 }
 
-// CreateManifest generates the master manifest
-func CreateManifest() {
-	// Create the file to write to
+func createManifest(fileName string) {
 	f, err := os.Create("./main.m3u8")
 	if err != nil {
 		panic(err)
 	}
 	defer f.Close()
-	// Create the writer to pass to the write function
+	// Create the writer to pass to the writeManifest function
 	w := bufio.NewWriter(f)
-	// Write in file heading
+	// Write in manifest file heading
 	w.Write([]byte("#EXTM3U\n"))
-	// Flush will happen after all manifest items have been writen to file
-
-	// Assume the dirName has been passed to the function
-	// Get number of "test" directories so all renditions are added to main manifest.
-	// Rename package to package manifest.
-
-	// I must admit, I don't like this now that I've done it. I wanted to use walk, but this could be made clearer.
+	// I don't like this part as much now that I've done it. I wanted to use walk, but this could be made clearer.
+	// Walk is acting like a for loop, validating the folders containing movie files and performing operations on them.
 	err = filepath.Walk("./", func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			fmt.Printf("prevent panic by handling failure accessing a path %q: %v\n", path, err)
@@ -75,32 +67,24 @@ func CreateManifest() {
 		}
 
 		if info.IsDir() == true {
-			movieDir, err := regexp.MatchString("test*", path)
+			movieDir, err := regexp.MatchString(fileName+"*", path)
 			if err != nil {
 				log.Fatal(err)
 			}
 			if movieDir == true {
-				fmt.Printf("visited file or dir: %q\n", path)
-				fmt.Println(reflect.TypeOf(path))
-				// Do logic for each movie directory found.
 				numFiles, err := fileCount(path)
 				if err != nil {
 					log.Fatal(err)
 				}
-				fmt.Println(numFiles)
-				var bitrates []int
+				var bitRates []int
 				var frameRate int
 				var avgBandwidth int
 				// Check that numFiles is less than 10, otherwise, NOT MVP
+				// Need to reconcile this (%03d) part of the filename generated by ffmpeg, simple fix but need to turn in the challenge.
 				if numFiles < 10 {
-					fmt.Println("sanity check 1")
-					// Make a while loop using numFiles to aggregate all of the bitrates
 					i := 0
 					for i < numFiles {
-						// fmt.Println(i)
-						// fmt.Println("sanity check 2")
 						cmd := exec.Command("ffprobe", path+"/output_00"+strconv.Itoa(i)+".ts")
-
 						// Must admit I'm a little confused here.
 						// var output, errb bytes.Buffer
 						var errb bytes.Buffer
@@ -112,20 +96,15 @@ func CreateManifest() {
 							log.Fatal(err)
 						}
 						fileMeta := errb.String()
-						bitrates = findBitRate(fileMeta, bitrates)
+						bitRates = findBitRates(fileMeta, bitRates)
 						// Checks every time, change so it only does a single check.
 						frameRate = findFrameRate(fileMeta)
 						i++
 					}
-					// Bad naming here, will fix with refactor later. Meant to provide the AVERAGE-BANDWIDTH parameter to main.m3u8 manifest
-					avgBandwidth = averageBitrate(numFiles, bitrates)
-					fmt.Println(avgBandwidth)
-					fmt.Println(bitrates)
-					fmt.Println(reflect.TypeOf(w))
-					writeToManifest(frameRate, avgBandwidth, w, path)
-					// writeManifest needs to take a 3rd parameter which is the BANDWIDTH to make
+					avgBandwidth = averageBitRates(numFiles, bitRates)
+					writeToManifest(frameRate, avgBandwidth, w, path, fileName)
 				} else {
-					log.Fatalln("Not MVP at this time")
+					log.Fatalln("More than 10 movie segments is NOT MVP at this time")
 				}
 			}
 		}
@@ -134,98 +113,73 @@ func CreateManifest() {
 	if err != nil {
 		log.Fatal(err)
 	}
-
-	// Get a count of ts files in directory
-
-	// Flush after for loop which covers every directory.
 	w.Flush()
-
+	fmt.Println("Program Complete")
 }
 
-func writeToManifest(frameRate int, avgBandwidth int, w *bufio.Writer, path string) {
-	fmt.Println("jdskl;fjas;", frameRate, avgBandwidth, path)
-	// Contrived check for BANDWIDTH, use switch statement
+func writeToManifest(frameRate int, avgBandwidth int, w *bufio.Writer, path string, fileName string) {
 	bandwidth := ""
 	resolution := ""
 	switch path {
-	case "test_1080":
-		// do this!!!!!!!!!!!!!!!!!!!!!!
-		bandwidth = "6000"
+	case fileName + "_1080":
+		bandwidth = "6000000"
 		resolution = "1920x1080"
-		fmt.Println("one")
-	case "test_720":
-		fmt.Println("two")
-	case "test_540":
-		fmt.Println("three")
-	case "test_432":
-		fmt.Println("four")
-	case "test_360":
-		fmt.Println("five")
+	case fileName + "_720":
+		bandwidth = "4000000"
+		resolution = "1280x720"
+	case fileName + "_540":
+		bandwidth = "3000000"
+		resolution = "960x540"
+	case fileName + "_432":
+		bandwidth = "2000000"
+		resolution = "768x432"
+	case fileName + "_360":
+		bandwidth = "1100000"
+		resolution = "640x360"
 	default:
-		log.Fatalln("switch statement received something wierd.")
+		log.Fatalln("switch statement received something wierd for resolution output.")
 	}
 
 	manifest := []byte(
-		`#EXT-X-STREAM-INF:BANDWIDTH=` + bandwidth + `,AVERAGE-BANDWITH=` + strconv.Itoa(avgBandwidth) + `,FRAME-RATE=` + strconv.Itoa(frameRate) + `,RESOLUTION=` + resolution + `,CODECS="H.264"
+		`#EXT-X-STREAM-INF:BANDWIDTH=` + bandwidth + `,AVERAGE-BANDWITH=` + strconv.Itoa(avgBandwidth) + `000` + `,FRAME-RATE=` + strconv.Itoa(frameRate) + `,RESOLUTION=` + resolution + `,CODECS="H.264"
 ./` + path + `/output.m3u8
 `)
-
-	// *** GET RID OF THIS AND USE A WRITER
-	// err = ioutil.WriteFile("./main.m3u8", manifest, 0644)
-	// if err != nil {
-	// 	panic(err)
-	// }
-
-	// `bufio` provides buffered writers in addition
-	// to the buffered readers we saw earlier.
 	w.Write(manifest)
-
-	// Use `Flush` to ensure all buffered operations have
-	// been applied to the underlying writer.
-
 }
 
-func averageBitrate(numFiles int, bitrates []int) int {
-	bitrateSum := 0
-	for _, v := range bitrates {
-		bitrateSum += v
+func averageBitRates(numFiles int, bitRates []int) int {
+	bitRateSum := 0
+	for _, v := range bitRates {
+		bitRateSum += v
 	}
-	return bitrateSum / numFiles
+	return bitRateSum / numFiles
 }
 
-func findBitRate(fileMeta string, bitrates []int) []int {
+func findBitRates(fileMeta string, bitRates []int) []int {
 	fields := strings.Fields(fileMeta)
 	for i, v := range fields {
 		if v == "bitrate:" {
-			fmt.Println(fields[i+1])
-			bitrateSafeString := strings.Trim(fields[i+1], "")
-			bitrate, err := strconv.Atoi(bitrateSafeString)
+			bitRateSafeString := strings.Trim(fields[i+1], "")
+			bitRate, err := strconv.Atoi(bitRateSafeString)
 			if err != nil {
 				log.Fatalln(err)
 			}
-			fmt.Println("I'M A FUCKING BITRATE:", bitrate)
-			bitrates = append(bitrates, bitrate)
-			fmt.Println("I'M A FUCKING SLICE OF BITRATE", bitrates)
-
+			bitRates = append(bitRates, bitRate)
 		}
 	}
-	fmt.Println()
-	return bitrates
+	return bitRates
 }
 
 func findFrameRate(fileMeta string) int {
 	fields := strings.Fields(fileMeta)
-	// fmt.Println(fields)
 	for i, v := range fields {
 		// I don't like this check either, but will fix when refactor.
 		if v == "fps," {
-			fmt.Println(fields[i-1])
 			frameRateSafeString := strings.Trim(fields[i+1], "")
 			frameRate, err := strconv.Atoi(frameRateSafeString)
 			if err != nil {
 				log.Fatalln(err)
 			}
-			// fmt.Println("I'M A FUCKING frameRate:", frameRate)
 			return frameRate
 		}
 	}
