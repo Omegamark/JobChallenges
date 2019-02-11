@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"reflect"
 	"regexp"
 	"strconv"
 	"strings"
@@ -42,63 +43,32 @@ func main() {
 	// 	log.Fatal(err)
 	// }
 
+	// Could put createmanifest into walk, but may be confusing.
+	// getDirectories()
 	// Pass dirName to this shit
 	CreateManifest()
 }
 
 // CreateManifest generates the master manifest
 func CreateManifest() {
+	// Create the file to write to
+	f, err := os.Create("./main.m3u8")
+	if err != nil {
+		panic(err)
+	}
+	defer f.Close()
+	// Create the writer to pass to the write function
+	w := bufio.NewWriter(f)
+	// Write in file heading
+	w.Write([]byte("#EXTM3U\n"))
+	// Flush will happen after all manifest items have been writen to file
+
+	// Assume the dirName has been passed to the function
 	// Get number of "test" directories so all renditions are added to main manifest.
 	// Rename package to package manifest.
 
-	// Get a count of ts files in directory
-	numFiles, err := fileCount("./test_360")
-	if err != nil {
-		log.Fatal(err)
-	}
-	fmt.Println(numFiles)
-	var bitrates []int
-	var frameRate int
-	var avgBandwidth int
-	// Check that numFiles is less than 10, otherwise, NOT MVP
-	if numFiles < 10 {
-		fmt.Println("sanity check 1")
-		// Make a while loop using numFiles to aggregate all of the bitrates
-		i := 0
-		for i < numFiles {
-			// fmt.Println(i)
-			// fmt.Println("sanity check 2")
-			cmd := exec.Command("ffprobe", "./test_360/output_00"+strconv.Itoa(i)+".ts")
-
-			// Must admit I'm a little confused here.
-			// var output, errb bytes.Buffer
-			var errb bytes.Buffer
-
-			// cmd.Stdout = &output
-			cmd.Stderr = &errb // Not sure why output is being put here, in Stderr and NOT Stdout
-			err = cmd.Run()
-			if err != nil {
-				log.Fatal(err)
-			}
-			// Redundant, but I do not fully understand why the Stderr is receiving the desired output.
-			fileMeta := errb.String()
-			bitrates = findBitRate(fileMeta, bitrates)
-			// Checks every time, change so it only does a single check.
-			frameRate = findFrameRate(fileMeta)
-			i++
-		}
-		// Bad naming here, will fix with refactor later. Meant to provide the AVERAGE-BANDWIDTH parameter to main.m3u8 manifest
-		avgBandwidth = averageBitrate(numFiles, bitrates)
-		fmt.Println(avgBandwidth)
-		fmt.Println(bitrates)
-		writeManifest(frameRate, avgBandwidth)
-	} else {
-		log.Fatalln("Not MVP at this time")
-	}
-}
-
-func getDirectories() {
-	err := filepath.Walk("./", func(path string, info os.FileInfo, err error) error {
+	// I must admit, I don't like this now that I've done it. I wanted to use walk, but this could be made clearer.
+	err = filepath.Walk("./", func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			fmt.Printf("prevent panic by handling failure accessing a path %q: %v\n", path, err)
 			return err
@@ -111,7 +81,52 @@ func getDirectories() {
 			}
 			if movieDir == true {
 				fmt.Printf("visited file or dir: %q\n", path)
+				fmt.Println(reflect.TypeOf(path))
+				// Do logic for each movie directory found.
+				numFiles, err := fileCount(path)
+				if err != nil {
+					log.Fatal(err)
+				}
+				fmt.Println(numFiles)
+				var bitrates []int
+				var frameRate int
+				var avgBandwidth int
+				// Check that numFiles is less than 10, otherwise, NOT MVP
+				if numFiles < 10 {
+					fmt.Println("sanity check 1")
+					// Make a while loop using numFiles to aggregate all of the bitrates
+					i := 0
+					for i < numFiles {
+						// fmt.Println(i)
+						// fmt.Println("sanity check 2")
+						cmd := exec.Command("ffprobe", path+"/output_00"+strconv.Itoa(i)+".ts")
 
+						// Must admit I'm a little confused here.
+						// var output, errb bytes.Buffer
+						var errb bytes.Buffer
+
+						// cmd.Stdout = &output
+						cmd.Stderr = &errb // Not sure why output is being put here, in Stderr and NOT Stdout, seems quirky
+						err = cmd.Run()
+						if err != nil {
+							log.Fatal(err)
+						}
+						fileMeta := errb.String()
+						bitrates = findBitRate(fileMeta, bitrates)
+						// Checks every time, change so it only does a single check.
+						frameRate = findFrameRate(fileMeta)
+						i++
+					}
+					// Bad naming here, will fix with refactor later. Meant to provide the AVERAGE-BANDWIDTH parameter to main.m3u8 manifest
+					avgBandwidth = averageBitrate(numFiles, bitrates)
+					fmt.Println(avgBandwidth)
+					fmt.Println(bitrates)
+					fmt.Println(reflect.TypeOf(w))
+					writeToManifest(frameRate, avgBandwidth, w, path)
+					// writeManifest needs to take a 3rd parameter which is the BANDWIDTH to make
+				} else {
+					log.Fatalln("Not MVP at this time")
+				}
 			}
 		}
 		return nil
@@ -120,37 +135,53 @@ func getDirectories() {
 		log.Fatal(err)
 	}
 
+	// Get a count of ts files in directory
+
+	// Flush after for loop which covers every directory.
+	w.Flush()
+
 }
 
-func writeManifest(frameRate int, avgBandwidth int) {
-	fmt.Println("jdskl;fjas;", frameRate, avgBandwidth)
-	// For more granular writes, open a file for writing.
-	f, err := os.Create("./main.m3u8")
-	if err != nil {
-		panic(err)
+func writeToManifest(frameRate int, avgBandwidth int, w *bufio.Writer, path string) {
+	fmt.Println("jdskl;fjas;", frameRate, avgBandwidth, path)
+	// Contrived check for BANDWIDTH, use switch statement
+	bandwidth := ""
+	resolution := ""
+	switch path {
+	case "test_1080":
+		// do this!!!!!!!!!!!!!!!!!!!!!!
+		bandwidth = "6000"
+		resolution = "1920x1080"
+		fmt.Println("one")
+	case "test_720":
+		fmt.Println("two")
+	case "test_540":
+		fmt.Println("three")
+	case "test_432":
+		fmt.Println("four")
+	case "test_360":
+		fmt.Println("five")
+	default:
+		log.Fatalln("switch statement received something wierd.")
 	}
-	// It's idiomatic to defer a `Close` immediately
-	// after opening a file.
-	defer f.Close()
-	// To start, here's how to dump a string (or just
-	// bytes) into a file.
+
 	manifest := []byte(
-		`#EXTM3U
-#EXT-X-STREAM-INF:BANDWIDTH=600000,AVERAGE-BANDWITH=` + strconv.Itoa(avgBandwidth) + `,FRAME-RATE=` + strconv.Itoa(frameRate) + `,RESOLUTION=1920x1080,CODECS="H.264"
-./test_1080/output.m3u8
+		`#EXT-X-STREAM-INF:BANDWIDTH=` + bandwidth + `,AVERAGE-BANDWITH=` + strconv.Itoa(avgBandwidth) + `,FRAME-RATE=` + strconv.Itoa(frameRate) + `,RESOLUTION=` + resolution + `,CODECS="H.264"
+./` + path + `/output.m3u8
 `)
-	err = ioutil.WriteFile("./main.m3u8", manifest, 0644)
-	if err != nil {
-		panic(err)
-	}
+
+	// *** GET RID OF THIS AND USE A WRITER
+	// err = ioutil.WriteFile("./main.m3u8", manifest, 0644)
+	// if err != nil {
+	// 	panic(err)
+	// }
 
 	// `bufio` provides buffered writers in addition
 	// to the buffered readers we saw earlier.
-	w := bufio.NewWriter(f)
+	w.Write(manifest)
 
 	// Use `Flush` to ensure all buffered operations have
 	// been applied to the underlying writer.
-	w.Flush()
 
 }
 
